@@ -1,0 +1,20 @@
+{% extends "minimal/base.html" %}
+
+{% block title %}{{ blogBase.postTitle }} - {{ blogBase.title }}{% endblock %}
+
+{% block style %}
+<style>
+    /* post 特定样式... */
+</style>
+{{ blogBase.style | safe }}
+{% endblock %}
+
+{% block content %}
+<article>
+    <!-- 文章内容... -->
+</article>
+{% endblock %}
+
+{% block additional_scripts %}
+{{ blogBase.script | safe }}
+{% endblock %} 

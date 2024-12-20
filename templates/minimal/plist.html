@@ -1,0 +1,108 @@
+{% extends "minimal/base.html" %}
+
+{% block style %}
+<style>
+    .post-list {
+        padding: 2rem 0;
+    }
+    
+    .post-item {
+        padding: 2rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .post-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        text-decoration: none;
+        margin-bottom: 1rem;
+        display: block;
+    }
+    
+    .post-title:hover {
+        color: var(--primary-color);
+    }
+    
+    .post-meta {
+        display: flex;
+        gap: 1rem;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+    }
+    
+    .post-description {
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+        line-height: 1.6;
+    }
+    
+    .post-tags {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .post-tag {
+        font-size: 0.75rem;
+        color: var(--primary-color);
+        text-decoration: none;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        background: var(--bg-secondary);
+    }
+    
+    .pagination {
+        display: flex;
+        justify-content: space-between;
+        padding: 2rem 0;
+    }
+    
+    .pagination a {
+        color: var(--text-secondary);
+        text-decoration: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        background: var(--bg-secondary);
+    }
+    
+    .pagination a:hover {
+        color: var(--primary-color);
+    }
+    
+    .pagination a[disabled] {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="post-list">
+    {% for post in postListJson.values() %}
+    <article class="post-item">
+        <a href="/{{ post.postUrl }}" class="post-title">{{ post.postTitle }}</a>
+        <div class="post-meta">
+            <span>{{ post.createdDate }}</span>
+            <span>{{ post.wordCount }} 字</span>
+        </div>
+        <div class="post-description">{{ post.description }}</div>
+        <div class="post-tags">
+            {% for label in post.labels %}
+            <a href="/tag.html#{{ label }}" class="post-tag" style="color: {{ labelColorDict[label] }}">{{ label }}</a>
+            {% endfor %}
+        </div>
+    </article>
+    {% endfor %}
+</div>
+
+<div class="pagination">
+    <a href="{{ blogBase.prevUrl }}" {% if blogBase.prevUrl == "disabled" %}disabled{% endif %}>
+        {{ i18n.Previous }}
+    </a>
+    <a href="{{ blogBase.nextUrl }}" {% if blogBase.nextUrl == "disabled" %}disabled{% endif %}>
+        {{ i18n.Next }}
+    </a>
+</div>
+{% endblock %} 

@@ -15,6 +15,8 @@ from feedgen.feed import FeedGenerator
 from jinja2 import Environment, FileSystemLoader
 from transliterate import translit
 from collections import OrderedDict
+import yaml
+from pathlib import Path
 ######################################################################################
 i18n={"Search":"Search","switchTheme":"switch theme","home":"home","comments":"comments","run":"run ","days":" days","Previous":"Previous","Next":"Next"}
 i18nCN={"Search":"搜索","switchTheme":"切换主题","home":"首页","comments":"评论","run":"网站运行","days":"天","Previous":"上一页","Next":"下一页"}
@@ -35,6 +37,62 @@ IconBase={
     "check":"M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"
 }
 ######################################################################################
+class BlogGenerator:
+    def __init__(self):
+        self.config = self._load_config()
+        self.template_dirs = self._init_template_dirs()
+        
+    def _load_config(self):
+        """加载配置文件，如果不存在则创建默认配置"""
+        config_dir = Path("config")
+        config_file = config_dir / "config.yaml"
+        
+        if not config_dir.exists():
+            config_dir.mkdir(parents=True)
+            
+        if not config_file.exists():
+            default_config = {
+                "template": "default"
+            }
+            
+            with open(config_file, 'w', encoding='utf-8') as f:
+                yaml.dump(default_config, f, allow_unicode=True)
+            
+            return default_config
+            
+        with open(config_file, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f)
+    
+    def _init_template_dirs(self):
+        """初始化模板目录"""
+        template_name = self.config.get("template", "default")
+        templates_root = Path("templates")
+        
+        return {
+            "current": templates_root / template_name,
+            "default": templates_root / "default"
+        }
+    
+    def get_template_path(self, template_file):
+        """获取模板文件的完整路径，如果当前模板目录下不存在，则使用默认模板"""
+        current_template = self.template_dirs["current"] / template_file
+        default_template = self.template_dirs["default"] / template_file
+        
+        if current_template.exists():
+            return str(current_template)
+        elif default_template.exists():
+            print(f"Warning: Template {template_file} not found in {self.config['template']}, using default")
+            return str(default_template)
+        else:
+            raise ValueError(f"Template file {template_file} not found in any template directory")
+    
+    def render_page(self, template_name, **kwargs):
+        """渲染页面，使用配置中指定的模板"""
+        template_path = self.get_template_path(template_name)
+        env = Environment(loader=FileSystemLoader(str(self.template_dirs["current"].parent)))
+        template = env.get_template(str(Path(self.config["template"]) / template_name))
+        return template.render(**kwargs)
+
 class GMEEK():
     def __init__(self,options):
         self.options=options
@@ -55,6 +113,8 @@ class GMEEK():
             self.labelColorDict[label.name]='#'+label.color
         print(self.labelColorDict)
         self.defaultConfig()
+        
+        self.blog_generator = BlogGenerator()
         
     def cleanFile(self):
         workspace_path = os.environ.get('GITHUB_WORKSPACE')
@@ -135,14 +195,23 @@ class GMEEK():
         except requests.RequestException as e:
             raise Exception("markdown2html error: {}".format(e))
 
-    def renderHtml(self,template,blogBase,postListJson,htmlDir,icon):
-        file_loader = FileSystemLoader('templates')
-        env = Environment(loader=file_loader)
-        template = env.get_template(template)
-        output = template.render(blogBase=blogBase,postListJson=postListJson,i18n=self.i18n,IconList=icon)
-        f = open(htmlDir, 'w', encoding='UTF-8')
-        f.write(output)
-        f.close()
+    def renderHtml(self, template_name, blogBase, postListJson, htmlDir, icon):
+        try:
+            template_path = self.blog_generator.get_template_path(template_name)
+            env = Environment(loader=FileSystemLoader('templates'))
+            template = env.get_template(f"{self.blog_generator.config['template']}/{template_name}")
+            output = template.render(blogBase=blogBase, postListJson=postListJson, i18n=self.i18n, IconList=icon)
+            
+            with open(htmlDir, 'w', encoding='UTF-8') as f:
+                f.write(output)
+                
+        except Exception as e:
+            print(f"Error rendering template {template_name}: {str(e)}")
+            # 如果出错，尝试使用默认模板
+            if self.blog_generator.config['template'] != 'default':
+                print("Falling back to default template")
+                self.blog_generator.config['template'] = 'default'
+                self.renderHtml(template_name, blogBase, postListJson, htmlDir, icon)
 
     def createPostHtml(self,issue):
         mdFileName=re.sub(r'[<>:/\\|?*\"]|[\0-\31]', '-', issue["postTitle"])
